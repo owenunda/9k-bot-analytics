@@ -3,13 +3,14 @@ import { ChartJSNodeCanvas } from 'chartjs-node-canvas';
 import * as DateFNS from 'date-fns';
 import pkg from 'date-diff';
 const { default: DateDiff } = pkg;
-import { SlashCommandBuilder } from 'discord.js';
+import { SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 
 export default {
     name: 'messages',
     data: new SlashCommandBuilder()
         .setName('messages')
         .setDescription('Display server message statistics with charts')
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addNumberOption(option =>
             option.setName('timeframe')
                 .setDescription('Number of time units to display (default: 30)')
