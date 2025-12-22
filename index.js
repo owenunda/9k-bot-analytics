@@ -31,6 +31,9 @@ Bot.Admin = {};
 Bot.Admin.SQL = {};
 Bot.Admin.SQL.User = config.database.user;
 Bot.Admin.SQL.Password = config.database.password;
+Bot.Admin.SQL.Host = config.database.host;
+Bot.Admin.SQL.Database = config.database.database;
+Bot.Admin.SQL.Port = config.database.port;
 
 Bot.WebHooks = {
         Team: config.webhooks.team.id && config.webhooks.team.token 
