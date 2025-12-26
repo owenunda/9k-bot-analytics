@@ -10,7 +10,6 @@ export default {
     data: new SlashCommandBuilder()
         .setName('messages')
         .setDescription('Display server message statistics with charts')
-        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addNumberOption(option =>
             option.setName('timeframe')
                 .setDescription('Number of time units to display (default: 30)')
