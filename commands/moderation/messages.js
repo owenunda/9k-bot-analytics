@@ -32,8 +32,10 @@ export default {
                 .setDescription('Display mode (default: server)')
                 .setRequired(false)
                 .addChoices(
-                    { name: 'Server View', value: 'server' },
-                    { name: 'Default View', value: 'default' }
+                    { name: 'Line Chart', value: 'line' },
+                    { name: 'Bar Chart', value: 'bar' },
+                    { name: 'Member Line Chart', value: 'member_line' },
+                    { name: 'Member Bar Chart', value: 'member_bar' }
                 ))
         .addChannelOption(option =>
             option.setName('channel')
@@ -53,7 +55,7 @@ export default {
         
         // Determine if using slash command or text command
         let type = 'all';
-        let display = 'default';
+        let display = 'line'; // Default to line chart (Date based)
         let temptime = 1;
         let selectedChannel = null;
         let selectedUser = null;
@@ -62,7 +64,7 @@ export default {
             // Slash command - use provided options or defaults
             temptime = msg.options.getNumber('timeframe') || 30;
             type = msg.options.getString('type') || 'days';
-            display = msg.options.getString('display') || 'server';
+            display = msg.options.getString('display') || 'line';
             selectedChannel = msg.options.getChannel('channel');
             selectedUser = msg.options.getUser('user');
             
@@ -75,8 +77,12 @@ export default {
             // Text command - parse from message content
             const mtext = msg.content;
             
+            
             if (mtext.includes('Server Messages')) {
-                display = 'server';
+                display = 'line';
+            }
+            if (mtext.includes('Top Users')) {
+                display = 'member_bar'; 
             }
             if (mtext.includes('Minute')) { type = 'minutes' }
             else if (mtext.includes('Hour')) { type = 'hours' }
@@ -189,7 +195,13 @@ export default {
             Embed.Image = false;
             let userranking = '';//user who sent msg rank
 
-            if (display == 'default') {//display server message view vs user message view just dif ways building the data sets
+
+
+            // Determine chart config based on display type
+            const isMemberChart = display === 'member_line' || display === 'member_bar';
+            const isLineChart = display === 'member_line' || display === 'line';
+
+            if (isMemberChart) {//display member view (rankings)
                 // Fetch all user data first
                 const userFetchPromises = TopUsers.map(TUser => 
                     Bot.Client.users.fetch(TUser.userid)
@@ -234,7 +246,7 @@ export default {
 
 
                 const configuration = {//more chart config yay!// See https://www.chartjs.org/docs/latest/configuration
-                    type: 'bar',
+                    type: isLineChart ? 'line' : 'bar',
                     options: {
                         elements: {
                             bar: {
@@ -242,6 +254,11 @@ export default {
                                 borderWidth: 5,
                                 borderColor: 'black',
                                 borderRadius: 15
+                            },
+                            line: {
+                                backgroundColor: '#8138ff',
+                                borderWidth: 5,
+                                borderColor: '#8138ff',
                             }
                         },
                         plugins: {
@@ -287,8 +304,8 @@ export default {
                     channel.send({ embeds: [CreateEmbed(Embed)], files: [{ attachment: image, name: msg.guild.name + " Top messages.png" }] });
                 }
 
-            }//end of default display
-            else {
+            }//end of member display
+            else { // Date based display (line or bar)
                 TopUsers.forEach(function (TUser, ind) {
                     if (TUser.userid == userId) {
                         userranking = `
@@ -316,13 +333,19 @@ export default {
 
 
                 const configuration = {//more chart config yay!// See https://www.chartjs.org/docs/latest/configuration
-                    type: 'line',
+                    type: isLineChart ? 'line' : 'bar',
                     options: {
                         elements: {
                             line: {
                                 backgroundColor: '#8138ff',
                                 borderWidth: 5,
                                 borderColor: '#8138ff',
+                            },
+                            bar: {
+                                backgroundColor: '#8138ff',
+                                borderWidth: 5,
+                                borderColor: 'black',
+                                borderRadius: 15
                             }
                         },
                         plugins: {
