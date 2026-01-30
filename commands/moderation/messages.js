@@ -38,7 +38,12 @@ export default {
         .addChannelOption(option =>
             option.setName('channel')
                 .setDescription('Specific channel to analyze (optional)')
+                .setRequired(false))
+        .addUserOption(option =>
+            option.setName('user')
+                .setDescription('Filter messages by specific user')
                 .setRequired(false)),
+
     aliases: ['!9k Messages All', '!9k Messages Max', '!9k Messages Minute', '!9k Messages Hour', '!9k Messages Daily', '!9k Messages Year', '!9k Messages Week', '!9k Messages Month', '!9k Messages Year',
         '!9k Server Messages All', '!9k Server Messages Max', '!9k Server Messages Hour', '!9k Server Messages Daily', '!9k Server Messages Day', '!9k Server Messages Minute', '!9k Server Messages Week', '!9k Server Messages Month', '!9k Server Messages Year'],
     async execute(msg, User, Bot) {
@@ -51,6 +56,7 @@ export default {
         let display = 'default';
         let temptime = 1;
         let selectedChannel = null;
+        let selectedUser = null;
         
         if (isInteraction) {
             // Slash command - use provided options or defaults
@@ -58,6 +64,7 @@ export default {
             type = msg.options.getString('type') || 'days';
             display = msg.options.getString('display') || 'server';
             selectedChannel = msg.options.getChannel('channel');
+            selectedUser = msg.options.getUser('user');
             
             // Validate timeframe
             if (temptime <= 0.01 || temptime >= 360) { temptime = 30 }
@@ -90,6 +97,9 @@ export default {
             Bot.ServerMessages.forEach(function (Message) {//all messages oh boy
                 const Channel = selectedChannel || { id: Message.channelid };
                 if (Message.serverid == msg.guild.id) {//guild messages
+                    // User filter check
+                    if (selectedUser && Message.userid !== selectedUser.id) return;
+
                     if (Message.channelid == Channel.id) {//channel specific messages if found
                         if (type == 'all') {//all or compare dates / times hour day week month year?
                             DetailUsers.push(Message);
@@ -169,10 +179,11 @@ export default {
             const datasets = {};
             datasets.label = 'Messages';
             datasets.data = [];
+            datasets.maxBarThickness = 150;
 
             const Embed = structuredClone(Bot.Embed);//embed setup
             Embed.Title = msg.guild.name + " Top messages";
-            Embed.Description = `**Server Messages: ${ServerMessages} **
+            Embed.Description = `**${selectedUser ? 'Total' : 'Server'} Messages: ${ServerMessages} **
 `;
             Embed.Thumbnail = false;
             Embed.Image = false;
@@ -212,12 +223,14 @@ export default {
                 const chartheight = 720;
 
                 Bot.ChartJS = new ChartJSNodeCanvas({ type: 'png', width: chartwidth, height: chartheight, backgroundColor: 'grey' });
-                TopUsersShort.forEach(function (TUser, ind) {
-                    Embed.Description +=
-                        `
+                if (!selectedUser) {
+                    TopUsersShort.forEach(function (TUser, ind) {
+                        Embed.Description +=
+                            `
 *#${(ind + 1)}* **<@${TUser.userid}>** - ` + '*' + TUser.count + ' Messages*';
-                });
-                Embed.Description += userranking;//add the users ranking at the end of top ranked messages
+                    });
+                    Embed.Description += userranking;//add the users ranking at the end of top ranked messages
+                }
 
 
                 const configuration = {//more chart config yay!// See https://www.chartjs.org/docs/latest/configuration
