@@ -35,7 +35,9 @@ export default {
                     { name: 'Line Chart', value: 'line' },
                     { name: 'Bar Chart', value: 'bar' },
                     { name: 'Member Line Chart', value: 'member_line' },
-                    { name: 'Member Bar Chart', value: 'member_bar' }
+                    { name: 'Member Bar Chart', value: 'member_bar' },
+                    { name: 'Member Pie Chart', value: 'member_pie' },
+                    { name: 'Member Doughnut Chart', value: 'member_doughnut' }
                 ))
         .addChannelOption(option =>
             option.setName('channel')
@@ -55,7 +57,7 @@ export default {
         
         // Determine if using slash command or text command
         let type = 'all';
-        let display = 'line'; // Default to line chart (Date based)
+        let display = 'bar'; // Default to line chart (Date based)
         let temptime = 1;
         let selectedChannel = null;
         let selectedUser = null;
@@ -64,9 +66,14 @@ export default {
             // Slash command - use provided options or defaults
             temptime = msg.options.getNumber('timeframe') || 30;
             type = msg.options.getString('type') || 'days';
-            display = msg.options.getString('display') || 'line';
+            display = msg.options.getString('display') || 'bar';
             selectedChannel = msg.options.getChannel('channel');
             selectedUser = msg.options.getUser('user');
+
+            // Override display if user is selected to prevent "Member" charts (single bar issue)
+            if (selectedUser && display.startsWith('member_')) {
+                display = 'bar';
+            }
             
             // Validate timeframe
             if (temptime <= 0.01 || temptime >= 360) { temptime = 30 }
@@ -198,8 +205,9 @@ export default {
 
 
             // Determine chart config based on display type
-            const isMemberChart = display === 'member_line' || display === 'member_bar';
+            const isMemberChart = display.startsWith('member_');
             const isLineChart = display === 'member_line' || display === 'line';
+            const isPieChart = display === 'member_pie' || display === 'member_doughnut';
 
             if (isMemberChart) {//display member view (rankings)
                 // Fetch all user data first
@@ -234,7 +242,7 @@ export default {
                 const chartwidth = 1280;
                 const chartheight = 720;
 
-                Bot.ChartJS = new ChartJSNodeCanvas({ type: 'png', width: chartwidth, height: chartheight, backgroundColor: 'grey' });
+                Bot.ChartJS = new ChartJSNodeCanvas({ type: 'png', width: chartwidth, height: chartheight, backgroundColor: isPieChart ? '#2b2d31' : 'grey' });
                 if (!selectedUser) {
                     TopUsersShort.forEach(function (TUser, ind) {
                         Embed.Description +=
@@ -245,12 +253,17 @@ export default {
                 }
 
 
-                const configuration = {//more chart config yay!// See https://www.chartjs.org/docs/latest/configuration
-                    type: isLineChart ? 'line' : 'bar',
+                let chartType = 'bar';
+                if (isLineChart) chartType = 'line';
+                if (display === 'member_pie') chartType = 'pie';
+                if (display === 'member_doughnut') chartType = 'doughnut';
+
+                const configuration = {
+                    type: chartType,
                     options: {
                         elements: {
                             bar: {
-                                backgroundColor: '#8138ff',
+                                backgroundColor: isPieChart ? chartcolors : '#8138ff',
                                 borderWidth: 5,
                                 borderColor: 'black',
                                 borderRadius: 15
@@ -259,20 +272,27 @@ export default {
                                 backgroundColor: '#8138ff',
                                 borderWidth: 5,
                                 borderColor: '#8138ff',
+                            },
+                            arc: { // For Pie/Doughnut
+                                backgroundColor: chartcolors,
+                                borderColor: '#2b2d31',
+                                borderWidth: 2
                             }
                         },
                         plugins: {
                             legend: {
+                                display: true, // Always show legend for pie/doughnut?
+                                position: isPieChart ? 'right' : 'top',
                                 labels: {
                                     color: 'white',
                                     font: {
                                         weight: 'bold',
-                                        size: 65
+                                        size: isPieChart ? 35 : 65
                                     }
                                 }
                             }
                         },
-                        scales: {
+                        scales: isPieChart ? {} : { // Hide scales for Pie/Doughnut
                             x: {
                                 ticks: {
                                     font: {
@@ -293,7 +313,15 @@ export default {
                             }
                         }
                     },
-                    data: { labels: datalabels, datasets: [datasets] }
+                    data: { 
+                        labels: datalabels, 
+                        datasets: [
+                            {
+                                ...datasets,
+                                backgroundColor: isPieChart ? chartcolors : undefined // Override backgroundColor for dataset
+                            }
+                        ] 
+                    }
 
                 };
 
@@ -324,12 +352,14 @@ export default {
                 const chartheight = 720;
 
                 Bot.ChartJS = new ChartJSNodeCanvas({ type: 'png', width: chartwidth, height: chartheight, backgroundColor: 'grey' });
-                TopUsersShort.forEach(function (TUser, ind) {
-                    Embed.Description +=
-                        `
+                if (!selectedUser) {
+                    TopUsersShort.forEach(function (TUser, ind) {
+                        Embed.Description +=
+                            `
 *#${(ind + 1)}* **<@${TUser.userid}>** - ` + '*' + TUser.count + ' Messages*';
-                });
-                Embed.Description += userranking;//add the users ranking at the end of top ranked messages
+                    });
+                    Embed.Description += userranking;//add the users ranking at the end of top ranked messages
+                }
 
 
                 const configuration = {//more chart config yay!// See https://www.chartjs.org/docs/latest/configuration
